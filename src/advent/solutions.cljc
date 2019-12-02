@@ -63,6 +63,24 @@
   []
   (mapv #(Long/parseLong %) (str/split (str/trim (slurp (io/resource "data/day-2.txt"))) #",")))
 
+(defn set-inputs
+  [memory a b]
+  (assoc memory 1 a 2 b))
+
 (defn set-memory-for-1202
   [memory]
-  (assoc memory 1 12 2 2))
+  (set-inputs memory 12 2))
+
+(defn interpret-all-inputs
+  [memory]
+  (for [i (range 0 100)
+        j (range 0 100)]
+    [(ffirst (interpret [(set-inputs memory i j) 0 true]))
+     i
+     j]))
+
+(defn matching-inputs
+  [memory expected-output]
+  (let [[_ input-a input-b] (first (filter #(= (first %) expected-output) (interpret-all-inputs memory)))]
+    [input-a input-b]))
+
