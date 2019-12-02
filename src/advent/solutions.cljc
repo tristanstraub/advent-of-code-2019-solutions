@@ -47,7 +47,7 @@
             [(assoc memory dest (* (nth memory src-a) (nth memory src-b)))
              (+ ptr 4)
              true])
-        99 [memory (inc ptr) false])
+        99 [memory ptr false])
       state)))
 
 (defn interpret
