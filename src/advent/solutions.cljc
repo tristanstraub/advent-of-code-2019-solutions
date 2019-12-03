@@ -84,3 +84,78 @@
   (let [[_ input-a input-b] (first (filter #(= (first %) expected-output) (interpret-all-inputs memory)))]
     [input-a input-b]))
 
+(defn parse-point
+  [point]
+  (let [[a & b] point
+        a       (str a)
+        b       (apply str b)]
+    [(keyword (str/lower-case a))
+     (Long/parseLong b)]))
+
+(defn parse-wire
+  [wire]
+  (map parse-point (str/split wire #",")))
+
+(defn wires
+  []
+  (map parse-wire (read-lines (io/resource "data/day-3.txt"))))
+
+(defn trace-wire
+  [grid wire-id wire]
+  (:grid (reduce (fn [{grid        :grid
+                       pos         :pos}
+                      [direction distance]]
+                   (let [ds          (case direction
+                                       :l [-1 0]
+                                       :r [1 0]
+                                       :u [0 -1]
+                                       :d [0 1])
+                         wire-length (get-in grid [pos wire-id] 0)]
+                     (reduce (fn [{grid :grid pos :pos} wire-length]
+                               (let [new-pos (mapv + pos ds)]
+                                 {:grid (update-in grid [new-pos wire-id]
+                                                   (fn [existing-wire-length]
+                                                     (or existing-wire-length wire-length)))
+                                  :pos  new-pos}))
+                             {:grid        grid
+                              :pos         pos}
+                             (range (inc wire-length) (inc (+ wire-length distance))))))
+                 {:grid grid :pos [0 0]}
+                 wire)))
+
+(defn traces
+  [wires]
+  (let [grid {}]
+    (reduce (fn [grid [i wire]]
+              (trace-wire grid i wire))
+            grid
+            (map vector (range) wires))))
+
+(defn crossing?
+  [[position wire-lengths]]
+  (<= 2 (count (keys wire-lengths))))
+
+(defn closest-manhattan-to-center*
+  [wires]
+  (->> (traces wires)
+       (filter crossing?)))
+
+(defn closest-manhattan-to-center
+  [wires]
+  (->> (traces wires)
+       (filter crossing?)
+       (map first)
+       (map #(reduce + (map (fn [v] (Math/abs v)) %)))
+       sort
+       first))
+
+
+(defn closest-length-to-center
+  [wires]
+  (->> (traces wires)
+       (filter crossing?)
+       (map (fn [[pos crossing]]
+              (reduce + (vals crossing))))
+       sort
+       first))
+
