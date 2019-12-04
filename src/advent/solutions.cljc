@@ -159,3 +159,40 @@
        sort
        first))
 
+(defn password-part1?
+  [p a b]
+  (and (some (fn [[a b]]
+               (= a b))
+             (partition 2 1 (str p)))
+       (= 6 (count (str p)))
+       (<= a p b)
+       (every? (fn [[a b]] (<= (read-string (str a)) (read-string (str b))))
+               (partition 2 1 (repeat 9) (str p)))))
+
+(defn password-part2?
+  [p a b]
+  (and (password-part1? p a b)
+       (some (fn [[a b c d]]
+               (and (= b c)
+                    (not= a b)
+                    (not= c d)))
+             (partition 4 1 (str "x" p "x")))))
+
+(defn passwords-part1
+  [a b]
+  (for [i (range a b)
+        :when (password-part1? i a b)]
+    i))
+
+(defn passwords-part2
+  [a b]
+  (for [i (range a b)
+        :when (password-part2? i a b)]
+    i))
+
+
+
+
+
+
+
