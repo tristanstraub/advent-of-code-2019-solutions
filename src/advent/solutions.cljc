@@ -34,26 +34,50 @@
   []
   (reduce + (map recursive-mass-to-fuel (module-masses))))
 
+(defn output
+  [state v])
+
+(defn input
+  [state])
+
+(defn machine
+  [[memory ptr running?]]
+  {:memory   memory
+   :ptr      ptr
+   :running? running?})
+
 (defn interpret-1
   [state]
-  (let [[memory ptr running?] state]
-    (if running? 
+  (let [{:keys [memory ptr running?]} state]
+    (if running?
       (case (nth memory ptr)
+        ;; add
         1 (let [[_ src-a src-b dest] (subvec memory ptr (+ ptr 4))]
-            [(assoc memory dest (+ (nth memory src-a) (nth memory src-b)))
-             (+ ptr 4)
-             true])
+            (machine [(assoc memory dest (+ (nth memory src-a) (nth memory src-b)))
+                      (+ ptr 4)
+                      true]))
+        ;; mul
         2 (let [[_ src-a src-b dest] (subvec memory ptr (+ ptr 4))]
-            [(assoc memory dest (* (nth memory src-a) (nth memory src-b)))
-             (+ ptr 4)
-             true])
-        99 [memory ptr false])
+            (machine [(assoc memory dest (* (nth memory src-a) (nth memory src-b)))
+                      (+ ptr 4)
+                      true]))
+        ;; input
+        ;; 3 (let [[_ dest] (subvec memory ptr (+ ptr 2))]
+        ;;     [(assoc memory dest (input state))
+        ;;      (+ ptr 2)
+        ;;      true])
+        ;; 4 (let [[_ dest] (subvec memory ptr (+ ptr 2))]
+        ;;     (output state (get memory dest))
+        ;;     [memory
+        ;;      (+ ptr 2)
+        ;;      true])
+        99 (machine [memory ptr false]))
       state)))
 
 (defn interpret
   [state]
   (loop [state state]
-    (let [[_ _ running?] state]
+    (let [{:keys [running?]} state]
       (if running?
         (recur (interpret-1 state))
         state))))
@@ -75,7 +99,7 @@
   [memory]
   (for [i (range 0 100)
         j (range 0 100)]
-    [(ffirst (interpret [(set-inputs memory i j) 0 true]))
+    [(nth (:memory (interpret (machine [(set-inputs memory i j) 0 true]))) 0)
      i
      j]))
 
@@ -189,10 +213,3 @@
   (for [i (range a b)
         :when (password-part2? i a b)]
     i))
-
-
-
-
-
-
-

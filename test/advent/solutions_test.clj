@@ -13,17 +13,17 @@
 (deftest day-2-test
   (testing "part-1"
     (testing "examples"
-      (is (= [[2 0 0 0 99] 4 false]
-             (solutions/interpret [[1 0 0 0 99] 0 true])))
-      (is (= [[2 3 0 6 99] 4 false]
-             (solutions/interpret [[2 3 0 3 99] 0 true])))
-      (is (= [[2 4 4 5 99 9801] 4 false]
-             (solutions/interpret [[2 4 4 5 99 0] 0 true])))
-      (is (= [[30 1 1 4 2 5 6 0 99] 8 false]
-             (solutions/interpret [[1 1 1 4 99 5 6 0 99] 0 true]))))
+      (is (= (solutions/machine [[2 0 0 0 99] 4 false])
+             (solutions/interpret (solutions/machine [[1 0 0 0 99] 0 true]))))
+      (is (= (solutions/machine [[2 3 0 6 99] 4 false])
+             (solutions/interpret (solutions/machine [[2 3 0 3 99] 0 true]))))
+      (is (= (solutions/machine [[2 4 4 5 99 9801] 4 false])
+             (solutions/interpret (solutions/machine [[2 4 4 5 99 0] 0 true]))))
+      (is (= (solutions/machine [[30 1 1 4 2 5 6 0 99] 8 false])
+             (solutions/interpret (solutions/machine [[1 1 1 4 99 5 6 0 99] 0 true])))))
     (testing "1202 program alarm"
       (is (= 6327510
-             (let [[memory _ _] (solutions/interpret [(solutions/set-memory-for-1202 (solutions/computer-memory)) 0 true])]
+             (let [{:keys [memory]} (solutions/interpret (solutions/machine [(solutions/set-memory-for-1202 (solutions/computer-memory)) 0 true]))]
                (first memory))))))
   (testing "part-2"
     (is (= [41 12]
