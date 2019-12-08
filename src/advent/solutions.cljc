@@ -40,47 +40,100 @@
 (defn input
   [state])
 
-(defn machine
-  [[memory ptr running?]]
-  {:memory   memory
-   :ptr      ptr
-   :running? running?})
+
+
+(defn opcode
+  [memory ptr]
+  (let [representation (str (nth memory ptr))]
+    (Long/parseLong (subs representation (max 0 (- (count representation) 2))))))
+
+(defn parameter-modes
+  [memory ptr]
+  (let [representation (str (nth memory ptr))]
+    (map #(Long/parseLong (str %)) (reverse (subs representation 0 (max 0 (- (count representation) 2)))))))
+
+(def indirect-mode
+  0)
+
+(defn source-value
+  [memory src-a mode]
+  {:pre [mode]}
+  (case mode
+    0 (nth memory src-a)
+    1 src-a))
+
+(defn apply-binary-op
+  [{:keys [memory ptr]:as state} op modes]
+  (let [modes                (vec modes)
+        [_ src-a src-b dest] (subvec memory ptr (+ ptr 4))
+        val-a                (source-value memory src-a (nth modes 0 indirect-mode))
+        val-b                (source-value memory src-b (nth modes 1 indirect-mode))]
+    (-> state
+        (assoc-in [:memory dest] (case op
+                                   :add (+ val-a val-b)
+                                   :mul (* val-a val-b)
+                                   :less-than (if (< val-a val-b)
+                                                1
+                                                0)
+                                   :equals (if (= val-a val-b)
+                                                1
+                                                0)))
+        (update :ptr + 4))))
 
 (defn interpret-1
   [state]
-  (let [{:keys [memory ptr running?]} state]
+  (let [{:keys [memory ptr running?]} state
+        op                            (opcode memory ptr)
+        modes                         (vec (parameter-modes memory ptr))]
     (if running?
-      (case (nth memory ptr)
+      (case op
         ;; add
-        1 (let [[_ src-a src-b dest] (subvec memory ptr (+ ptr 4))]
-            (machine [(assoc memory dest (+ (nth memory src-a) (nth memory src-b)))
-                      (+ ptr 4)
-                      true]))
+        1  (apply-binary-op state :add modes)
         ;; mul
-        2 (let [[_ src-a src-b dest] (subvec memory ptr (+ ptr 4))]
-            (machine [(assoc memory dest (* (nth memory src-a) (nth memory src-b)))
-                      (+ ptr 4)
-                      true]))
+        2  (apply-binary-op state :mul modes)
         ;; input
-        ;; 3 (let [[_ dest] (subvec memory ptr (+ ptr 2))]
-        ;;     [(assoc memory dest (input state))
-        ;;      (+ ptr 2)
-        ;;      true])
-        ;; 4 (let [[_ dest] (subvec memory ptr (+ ptr 2))]
-        ;;     (output state (get memory dest))
-        ;;     [memory
-        ;;      (+ ptr 2)
-        ;;      true])
-        99 (machine [memory ptr false]))
+        3  (let [[_ dest] (subvec memory ptr (+ ptr 2))]
+             (-> state
+                 (assoc-in [:memory dest] (first (:inputs state)))
+                 (update :ptr + 2)
+                 (update :inputs rest)))
+        ;; output
+        4  (let [[_ dest] (subvec memory ptr (+ ptr 2))]
+             (-> state
+                 (update :outputs (fnil conj []) (source-value memory dest (nth modes 0 indirect-mode)))
+                 (update :ptr + 2)))
+        ;; jump-if-true
+        5 (let [[_ a b] (subvec memory ptr (+ ptr 3))]
+            (-> state
+                (update :ptr (fn [ptr]
+                               (if (not (zero? (source-value memory a (nth modes 0 indirect-mode))))
+                                 (source-value memory b (nth modes 1 indirect-mode))
+                                 (+ ptr 3))))))
+        ;; jump-if-false
+        6 (let [[_ a b] (subvec memory ptr (+ ptr 3))]
+            (-> state
+                (update :ptr (fn [ptr]
+                               (if (zero? (source-value memory a (nth modes 0 indirect-mode)))
+                                 (source-value memory b (nth modes 1 indirect-mode))
+                                 (+ ptr 3))))))
+        ;; less-than
+        7 (apply-binary-op state :less-than modes)
+        ;; equals
+        8 (apply-binary-op state :equals modes)
+        
+        99 (assoc state :running? false))
       state)))
 
 (defn interpret
-  [state]
-  (loop [state state]
-    (let [{:keys [running?]} state]
-      (if running?
-        (recur (interpret-1 state))
-        state))))
+  ([state]
+   (interpret state nil))
+  ([state inputs]
+   (let [state (assoc state :inputs inputs)]
+     (loop [state state]
+       (let [{:keys [running?]} state]
+         (if running?
+           (recur (interpret-1 state))
+           state))))))
 
 (defn computer-memory
   "Read computer memory from resource day-2.txt"
@@ -94,6 +147,12 @@
 (defn set-memory-for-1202
   [memory]
   (set-inputs memory 12 2))
+
+(defn machine
+  [[memory ptr running?]]
+  {:memory   memory
+   :ptr      ptr
+   :running? running?})
 
 (defn interpret-all-inputs
   [memory]
@@ -213,3 +272,10 @@
   (for [i (range a b)
         :when (password-part2? i a b)]
     i))
+
+(defn computer-memory-day-5
+  "Read computer memory from resource day-2.txt"
+  []
+  (mapv #(Long/parseLong %) (str/split (str/trim (slurp (io/resource "data/day-5.txt"))) #",")))
+
+
